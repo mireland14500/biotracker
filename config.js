@@ -5,5 +5,5 @@
 // Leave the placeholders as they are to run in "this device only" mode.
 window.BIOTRACKER_SUPABASE = {
   url: "https://rktzcyicwmwfljicpixe.supabase.co",
-  anonKey: "YOUR_SUPABASE_ANON_KEY",
+  anonKey: "sb_publishable_JSMjBDjh_T_cf5OcdVozOQ_wX_Mo09G",
 };
