@@ -112,6 +112,26 @@ table.wk td.empty{color:#3d4753}
   .measure{grid-template-columns:1fr}
   .measure .field{border-right:0}
 }
+.who{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-4px 0 14px;font-size:13px;color:var(--muted)}
+.who select{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-weight:700;color:var(--text);max-width:100%}
+.who .sp{flex:1}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:4px;font-size:13px}
+.auth{max-width:400px;margin:30px auto}
+.auth .card{padding:20px}
+.auth h3{margin:0 0 6px;font-size:20px}
+.auth p{color:var(--muted);margin:0 0 16px;font-size:14px;line-height:1.45}
+.auth label{display:block;font-size:13px;font-weight:600;margin:12px 0 6px}
+.auth .go{width:100%;margin-top:16px;padding:12px;font-size:15px}
+.auth .err{color:var(--bad);font-size:13px;margin-top:10px;min-height:1em}
+.auth .alt{margin-top:14px;text-align:center}
+.clist{margin:8px 0 14px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.clist div{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);font-size:14px}
+.clist div:last-child{border-bottom:0}
+.clist small{color:var(--muted);display:block;font-size:12px}
+.clist .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.tag{font-size:11px;padding:2px 7px;border-radius:999px;background:#2a2110;color:#ffd28a;white-space:nowrap}
+.tag.ok{background:#10291b;color:var(--accent)}
+.modal input.text{margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -120,8 +140,10 @@ table.wk td.empty{color:#3d4753}
     <h1><span>Biotracker</span></h1>
     <div class="status"><span class="dot" id="sdot"></span><span id="stext">Connecting…</span></div>
   </header>
+  <div class="who" id="who"></div>
   <div id="banner"></div>
-  <nav class="tabs">
+  <section id="v-auth" class="hidden"></section>
+  <nav class="tabs" id="tabs">
     <button data-tab="log" class="on">Daily log</button>
     <button data-tab="week">Week view</button>
     <button data-tab="trends">Trends</button>
@@ -133,6 +155,7 @@ table.wk td.empty{color:#3d4753}
 <div class="toast" id="toast"></div>
 <div id="modalRoot"></div>
 
+<script src="config.js"></script>
 <script>
 // ---------- metric definitions (same as the coach's spreadsheet) ----------
 const SECTIONS = [
@@ -196,6 +219,7 @@ const fmtUK=s=>{const d=parse(s);return pad(d.getDate())+"/"+pad(d.getMonth()+1)
 const S = {
   tab:"log", date:today(), week:monday(today()), trend:"weight", range:30,
   entries:{}, weeks:{}, db:null, canWrite:true, local:false,
+  mode:null, role:null, clients:[], viewOwner:null, uid:null, email:null, authView:null,
   pending:{}, saving:{}, timers:{},
 };
 const $=s=>document.querySelector(s);
@@ -238,7 +262,7 @@ async function flush(coll,id){
 }
 function doneSaving(){
   if(Object.values(S.pending).some(Boolean)||Object.values(S.saving).some(Boolean))return;
-  setStatus("ok",S.local?"Saved on this device":"All changes saved");
+  setStatus("ok",S.local?"Saved on this device":S.role==="coach"?"Live":"All changes saved");
 }
 
 function setVal(date,k,v){
@@ -441,13 +465,184 @@ function renderTrends(){
 }
 
 function render(){
+  const auth=!!S.authView;
+  $("#v-auth").classList.toggle("hidden",!auth);
+  $("#tabs").classList.toggle("hidden",auth);
+  if(auth){["log","week","trends"].forEach(t=>$("#v-"+t).classList.add("hidden"));renderAuth();renderWho();$("#banner").innerHTML="";return}
   ["log","week","trends"].forEach(t=>$("#v-"+t).classList.toggle("hidden",S.tab!==t));
   document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===S.tab));
   if(S.tab==="log")renderLog();else if(S.tab==="week")renderWeek();else renderTrends();
+  renderWho();
   let b="";
-  if(!S.canWrite)b=`<div class="banner info">View-only: you can see every entry, but only the owner can edit.</div>`;
+  if(S.role==="coach"){
+    const c=S.clients.find(x=>x.email===S.pickedEmail);
+    if(!S.clients.length)b=`<div class="banner info">No clients yet. Tap <b>Clients</b> above to add your first one.</div>`;
+    else if(c&&!c.user_id)b=`<div class="banner">${esc(S.pickedEmail||"This client")} hasn't created their account yet. Send them the link to this page and ask them to tap "Create account" using the same email.</div>`;
+    else b=`<div class="banner info">Coach view: read-only.</div>`;
+  }
+  else if(!S.canWrite)b=`<div class="banner info">View-only: you can see every entry, but only the owner can edit.</div>`;
   else if(S.local)b=`<div class="banner">Not connected to cloud storage — entries are saved on this device only and your coach won't see them.</div>`;
   $("#banner").innerHTML=b;
+}
+
+function renderWho(){
+  let h="";
+  if(S.mode==="supabase"&&S.email&&!["signin","signup","forgot","checkemail"].includes(S.authView)){
+    if(S.role==="coach"&&!S.authView){
+      h+=`<select id="clientPick" aria-label="Client">${S.clients.length?"":`<option>No clients yet</option>`}${S.clients.map(c=>`<option value="${esc(c.email)}" ${c.email===S.pickedEmail?"selected":""}>${esc(c.name||c.email)}${c.user_id?"":" (not signed up)"}</option>`).join("")}</select>
+        <button class="pill" data-act="manageClients">Clients</button>`;
+    } else if(S.role==="client"&&S.myName){h+=`<b style="color:var(--text)">${esc(S.myName)}</b>`}
+    h+=`<span class="sp"></span><span>${esc(S.email)}</span><button class="linkbtn" data-act="signOut">Sign out</button>`;
+  }
+  $("#who").innerHTML=h;
+}
+
+// ---------- auth screens (Supabase mode) ----------
+function renderAuth(){
+  const v=S.authView, err=`<div class="err" id="authErr">${esc(S.authErr||"")}</div>`;
+  let h="";
+  if(v==="signin")h=`<h3>Sign in</h3><p>Sign in to log your day or, for coaches, to see your clients.</p>
+    <form data-form="signin"><label>Email</label><input class="text" type="email" name="email" autocomplete="email" required>
+    <label>Password</label><input class="text" type="password" name="password" autocomplete="current-password" required>
+    <button class="pill accent go">Sign in</button>${err}</form>
+    <div class="alt"><button class="linkbtn" data-act="auth" data-v="signup">Create account</button> · <button class="linkbtn" data-act="auth" data-v="forgot">Forgot password?</button></div>`;
+  else if(v==="signup")h=`<h3>Create account</h3><p>Use the email address your coach added you with.</p>
+    <form data-form="signup"><label>Email</label><input class="text" type="email" name="email" autocomplete="email" required>
+    <label>Password</label><input class="text" type="password" name="password" autocomplete="new-password" minlength="8" required>
+    <button class="pill accent go">Create account</button>${err}</form>
+    <div class="alt"><button class="linkbtn" data-act="auth" data-v="signin">I already have an account</button></div>`;
+  else if(v==="forgot")h=`<h3>Reset password</h3><p>We'll email you a link to choose a new password.</p>
+    <form data-form="forgot"><label>Email</label><input class="text" type="email" name="email" autocomplete="email" required>
+    <button class="pill accent go">Send reset link</button>${err}</form>
+    <div class="alt"><button class="linkbtn" data-act="auth" data-v="signin">Back to sign in</button></div>`;
+  else if(v==="checkemail")h=`<h3>Check your email</h3><p>${esc(S.authMsg||"")}</p>
+    <div class="alt"><button class="linkbtn" data-act="auth" data-v="signin">Back to sign in</button></div>`;
+  else if(v==="recovery")h=`<h3>Choose a new password</h3>
+    <form data-form="recovery"><label>New password</label><input class="text" type="password" name="password" autocomplete="new-password" minlength="8" required>
+    <button class="pill accent go">Save password</button>${err}</form>`;
+  else if(v==="noaccess")h=`<h3>No access yet</h3><p>You're signed in as <b>${esc(S.email)}</b>, but this email isn't on a coach's client list. Ask your coach to add this exact email, then reload.</p>
+    <button class="pill go" data-act="reload">I've been added – try again</button>`;
+  else if(v==="loading")h=`<h3>Loading…</h3>`;
+  $("#v-auth").innerHTML=`<div class="auth"><div class="card">${h}</div></div>`;
+}
+
+document.addEventListener("submit",async ev=>{
+  const f=ev.target.closest("form[data-form]");if(!f)return;
+  ev.preventDefault();
+  const kind=f.dataset.form, fd=new FormData(f), email=String(fd.get("email")||"").trim().toLowerCase(), password=String(fd.get("password")||"");
+  const btn=f.querySelector("button");btn.disabled=true;S.authErr="";
+  const sb=S.sb, here=location.origin+location.pathname;
+  try{
+    if(kind==="signin"){const {error}=await sb.auth.signInWithPassword({email,password});if(error)throw error}
+    else if(kind==="signup"){
+      const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:here}});if(error)throw error;
+      if(!data.session){S.authView="checkemail";S.authMsg=`We sent a confirmation link to ${email}. Open it on this device, then sign in.`;render();return}
+    }
+    else if(kind==="forgot"){const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:here});if(error)throw error;
+      S.authView="checkemail";S.authMsg=`If ${email} has an account, a reset link is on its way.`;render();return}
+    else if(kind==="recovery"){const {error}=await sb.auth.updateUser({password});if(error)throw error;toast("Password saved");
+      const {data:{session}}=await sb.auth.getSession();if(session)await startSession(session);return}
+  }catch(e){S.authErr=e.message||String(e);const el=$("#authErr");if(el)el.textContent=S.authErr;btn.disabled=false}
+});
+
+// ---------- coach: manage clients ----------
+function showClients(){
+  const rows=S.clients.map(c=>`<div><span class="grow">${esc(c.name||"–")}<small>${esc(c.email)}</small></span>
+    ${c.user_id?`<span class="tag ok">active</span>`:`<span class="tag">invited</span>`}
+    <button class="linkbtn" data-act="removeClient" data-email="${esc(c.email)}">Remove</button></div>`).join("");
+  $("#modalRoot").innerHTML=`<div class="overlay" data-act="closeModal"><div class="modal">
+    <div style="font-weight:700;margin-bottom:4px">Clients</div>
+    <div style="color:var(--muted);font-size:13px">Add a client's email, then send them the link to this page. They tap "Create account" with that email.</div>
+    <div class="clist">${rows||`<div style="color:var(--muted)">No clients yet.</div>`}</div>
+    <form data-form2="addClient"><input class="text" name="name" placeholder="Client name" required><input class="text" type="email" name="email" placeholder="Client email" required>
+    <div class="err" id="clientErr" style="color:var(--bad);font-size:13px"></div>
+    <div class="row"><button type="button" class="pill" data-act="closeModal">Close</button><button class="pill accent">Add client</button></div></form></div></div>`;
+}
+document.addEventListener("submit",async ev=>{
+  const f=ev.target.closest("form[data-form2=addClient]");if(!f)return;ev.preventDefault();
+  const fd=new FormData(f), email=String(fd.get("email")).trim().toLowerCase(), name=String(fd.get("name")).trim();
+  const {error}=await S.sb.from("tracker_members").upsert({email,name,role:"client"});
+  if(error){$("#clientErr").textContent=error.message;return}
+  await loadClients();S.pickedEmail=email;pickClient(email);showClients();toast("Client added");
+});
+async function loadClients(){
+  const {data,error}=await S.sb.rpc("coach_clients");
+  if(error){setStatus("err","Couldn't load clients");return}
+  S.clients=data||[];
+}
+function pickClient(email){
+  S.pickedEmail=email;
+  const c=S.clients.find(x=>x.email===email);
+  try{localStorage.setItem("biotracker-client",email)}catch(e){}
+  S.viewOwner=c&&c.user_id||null;
+  S.entries={};S.weeks={};
+  if(S.db)S.db.refreshAll();
+  render();
+}
+
+// ---------- Supabase storage adapter (same shape as the claude.ai db) ----------
+function supaAdapter(sb){
+  const listeners={};
+  async function fetchColl(coll){
+    if(!S.viewOwner)return{docs:[],metadata:{fromCache:false}};
+    const owner=S.viewOwner;
+    const {data,error}=await sb.from("docs").select("id,data").eq("owner",owner).eq("coll",coll);
+    if(error)throw error;
+    if(owner!==S.viewOwner)return null; // switched client mid-request
+    return{docs:data.map(r=>({id:r.id,data:()=>r.data})),metadata:{fromCache:false}};
+  }
+  function notify(coll){(listeners[coll]||[]).forEach(async l=>{try{const snap=await fetchColl(coll);if(snap)l.next(snap)}catch(e){l.err&&l.err({code:"error",message:e.message})}})}
+  const refreshAll=()=>Object.keys(listeners).forEach(notify);
+  sb.channel("docs-changes").on("postgres_changes",{event:"*",schema:"public",table:"docs"},p=>{
+    const row=p.new&&p.new.owner?p.new:p.old||{};
+    if(row.owner&&row.owner!==S.viewOwner)return;
+    if(row.owner===S.uid&&S.role==="client"&&Object.values(S.pending).some(Boolean))return;
+    if(row.coll)notify(row.coll);else refreshAll();
+  }).subscribe();
+  window.addEventListener("focus",refreshAll);
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshAll()});
+  return{
+    refreshAll,
+    doc(path){const [coll,id]=path.split("/");return{async set(body){
+      const {error}=await sb.from("docs").upsert({owner:S.uid,coll,id,data:body,updated_at:new Date().toISOString()});
+      if(error)throw{code:error.code==="42501"?"invalid_argument":"error",message:error.message};
+    }}},
+    collection(coll){return{onSnapshot(next,err){(listeners[coll]=listeners[coll]||[]).push({next,err});notify(coll);return()=>{}}}},
+  };
+}
+function loadScript(src){return new Promise((res,rej)=>{const el=document.createElement("script");el.src=src;el.onload=res;el.onerror=rej;document.head.appendChild(el)})}
+
+async function initSupabase(cfg){
+  S.mode="supabase";S.authView="loading";render();setStatus("busy","Connecting…");
+  try{await loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2")}catch(e){setStatus("err","Couldn't load");S.authView=null;goLocal();return}
+  const sb=window.supabase.createClient(cfg.url,cfg.anonKey);S.sb=sb;
+  let started=false;
+  sb.auth.onAuthStateChange((event,session)=>{
+    if(event==="PASSWORD_RECOVERY"){S.authView="recovery";S.authErr="";render();return}
+    if(event==="SIGNED_IN"&&session&&!started&&S.authView!=="recovery"){started=true;setTimeout(()=>startSession(session),0)}
+    if(event==="SIGNED_OUT"){location.reload()}
+  });
+  const {data:{session}}=await sb.auth.getSession();
+  if(S.authView==="recovery")return;
+  if(!session){S.authView="signin";setStatus("","Signed out");render();return}
+  if(!started){started=true;await startSession(session)}
+}
+async function startSession(session){
+  S.uid=session.user.id;S.email=(session.user.email||"").toLowerCase();
+  S.authView="loading";render();
+  const {data,error}=await S.sb.from("tracker_members").select("role,name").eq("email",S.email).maybeSingle();
+  if(error){setStatus("err","Error: "+error.message);return}
+  if(!data){S.authView="noaccess";setStatus("","No access");render();return}
+  S.role=data.role;S.myName=data.name;S.authView=null;
+  if(S.role==="coach"){
+    S.canWrite=false;S.tab="week";
+    await loadClients();
+    let saved=null;try{saved=localStorage.getItem("biotracker-client")}catch(e){}
+    S.pickedEmail=(S.clients.find(c=>c.email===saved)||S.clients[0]||{}).email||null;
+    S.viewOwner=(S.clients.find(c=>c.email===S.pickedEmail)||{}).user_id||null;
+  } else {S.canWrite=true;S.viewOwner=S.uid}
+  S.db=supaAdapter(S.sb);
+  subscribe();
 }
 
 // ---------- events ----------
@@ -467,6 +662,14 @@ document.addEventListener("click",ev=>{
     else if(a==="trend"){S.trend=t.dataset.k}
     else if(a==="range"){S.range=+t.dataset.r}
     else if(a==="summary"){showSummary();return}
+    else if(a==="auth"){S.authView=t.dataset.v;S.authErr="";render();return}
+    else if(a==="signOut"){S.sb&&S.sb.auth.signOut().then(()=>location.reload());return}
+    else if(a==="reload"){location.reload();return}
+    else if(a==="manageClients"){showClients();return}
+    else if(a==="removeClient"){const em=t.dataset.email;
+      if(t.dataset.sure!=="1"){t.dataset.sure="1";t.textContent="Tap again to remove";return}
+      S.sb.from("tracker_members").delete().eq("email",em).then(async({error})=>{if(error){toast(error.message);return}
+        await loadClients();if(S.pickedEmail===em)pickClient((S.clients[0]||{}).email||null);showClients();toast("Removed")});return}
     else if(a==="closeModal"){if(t.tagName==="BUTTON"||ev.target===t)$("#modalRoot").innerHTML="";return}
     else if(a==="copySum"){const ta=$("#sumtxt");ta.select();
       (navigator.clipboard?navigator.clipboard.writeText(ta.value):Promise.reject()).then(()=>toast("Copied")).catch(()=>{try{document.execCommand("copy");toast("Copied")}catch(e){toast("Select & copy manually")}});return}
@@ -499,6 +702,7 @@ document.addEventListener("click",ev=>{
 function fmtRaw(v,f){return f.dp===0?String(Math.round(v)):String(+v.toFixed(2))}
 function findPrevNum(d,k){const ds=Object.keys(S.entries).filter(x=>x<d).sort().reverse();for(const x of ds){const v=S.entries[x][k];if(typeof v==="number")return v}return null}
 
+document.addEventListener("change",ev=>{if(ev.target.id==="clientPick")pickClient(ev.target.value)});
 document.addEventListener("input",ev=>{
   const t=ev.target;if(!S.canWrite||!t.dataset.k)return;
   if(t.dataset.wk){const v=t.type==="number"?(t.value===""?null:parseFloat(t.value)):t.value.trim();setWeekVal(t.dataset.wk,t.dataset.k,v);return}
@@ -530,19 +734,25 @@ function safeRerender(){
   if(a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA")&&S.tab==="log"){updateCounts();return}
   render();
 }
+function subscribe(){
+  setStatus("busy","Loading…");
+  const timer=setTimeout(()=>{if(!firstLoad.entries)setStatus("err","Can't reach data yet")},10000);
+  S.db.collection("entries").onSnapshot(s=>{applySnap("entries",s);if(!s.metadata.fromCache){firstLoad.entries=true;clearTimeout(timer);doneSaving()}safeRerender()},
+    e=>{clearTimeout(timer);setStatus("err","Sync stopped – reload")});
+  S.db.collection("weeks").onSnapshot(s=>{applySnap("weeks",s);safeRerender()},()=>{});
+  render();
+}
 async function init(){
   render();
+  const cfg=window.BIOTRACKER_SUPABASE;
+  if(cfg&&cfg.url&&cfg.anonKey&&!/YOUR_/.test(cfg.url+cfg.anonKey)){initSupabase(cfg);return}
   if(!window.claude||!window.claude.use){goLocal();return}
   let db=null,user=null;
   try{[db,user]=await Promise.all([claude.use("db"),claude.use("user").catch(()=>null)])}catch(e){}
   if(!db){goLocal();return}
-  S.db=db;
+  S.db=db;S.mode="claude";
   if(user&&user.can){try{const c=await user.can("data.write");if(c===false)S.canWrite=false}catch(e){}}
-  setStatus("busy","Loading…");
-  const timer=setTimeout(()=>{if(!firstLoad.entries)setStatus("err","Can't reach data yet")},10000);
-  db.collection("entries").onSnapshot(s=>{applySnap("entries",s);if(!s.metadata.fromCache){firstLoad.entries=true;clearTimeout(timer);doneSaving()}safeRerender()},
-    e=>{clearTimeout(timer);setStatus("err","Sync stopped – reload")});
-  db.collection("weeks").onSnapshot(s=>{applySnap("weeks",s);safeRerender()},()=>{});
+  subscribe();
 }
 function goLocal(){S.local=true;loadLocal();setStatus("ok","Saved on this device");render()}
 init();
