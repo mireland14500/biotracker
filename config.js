@@ -4,6 +4,6 @@
 // the row level security rules in supabase/setup.sql.
 // Leave the placeholders as they are to run in "this device only" mode.
 window.BIOTRACKER_SUPABASE = {
-  url: "YOUR_SUPABASE_URL",        // e.g. https://abcdefghijklmnop.supabase.co
+  url: "https://rktzcyicwmwfljicpixe.supabase.co",
   anonKey: "YOUR_SUPABASE_ANON_KEY",
 };
