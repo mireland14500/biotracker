@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Biotracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1117;--panel:#161b22;--panel2:#1c232c;--line:#2a333e;--text:#e8edf2;--muted:#8b97a5;
+  --accent:#3ddc84;--accent-d:#1f8f52;--blue:#4c8dff;--warn:#ffb547;--bad:#ff6b6b;
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,sans-serif;font-size:15px;-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font:inherit;color:inherit}
+.wrap{max-width:860px;margin:0 auto;padding:16px 14px 90px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+header.top h1{font-size:19px;margin:0;font-weight:800;letter-spacing:-.01em}
+header.top h1 span{color:var(--accent)}
+.status{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.ok{background:var(--accent)}.dot.busy{background:var(--warn)}.dot.err{background:var(--bad)}
+.tabs{display:flex;gap:6px;background:var(--panel);padding:5px;border-radius:12px;border:1px solid var(--line);margin-bottom:14px}
+.tabs button{flex:1;border:0;background:none;padding:10px 6px;border-radius:9px;font-weight:600;color:var(--muted);cursor:pointer}
+.tabs button.on{background:var(--accent);color:#06210f}
+.bar{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.bar .lbl{flex:1;text-align:center;font-weight:700;font-size:16px}
+.bar .lbl small{display:block;font-weight:500;color:var(--muted);font-size:12px;margin-top:2px}
+.iconbtn{border:1px solid var(--line);background:var(--panel);width:42px;height:42px;border-radius:11px;cursor:pointer;font-size:18px;display:grid;place-items:center}
+.iconbtn:active{transform:scale(.96)}
+.pill{border:1px solid var(--line);background:var(--panel);padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600;font-size:13px}
+.pill.accent{background:var(--accent);color:#06210f;border-color:var(--accent)}
+.daystrip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px}
+.daystrip button{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:7px 0;cursor:pointer;line-height:1.2}
+.daystrip button b{display:block;font-size:15px}
+.daystrip button small{font-size:11px;color:var(--muted)}
+.daystrip button.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.daystrip button .pct{display:block;height:3px;margin:5px 8px 0;border-radius:2px;background:var(--line);overflow:hidden}
+.daystrip button .pct i{display:block;height:100%;background:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);margin-bottom:14px;overflow:hidden}
+.card h2{margin:0;padding:12px 16px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--panel2);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.card h2 em{font-style:normal;color:var(--muted);letter-spacing:0;text-transform:none;font-weight:500}
+.field{padding:12px 16px;border-bottom:1px solid var(--line)}
+.field:last-child{border-bottom:0}
+.field .name{display:flex;justify-content:space-between;align-items:baseline;font-weight:600;margin-bottom:8px;font-size:14px}
+.field .name small{color:var(--muted);font-weight:500;font-size:12px}
+.field.inline{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.field.inline .name{margin:0}
+.rate{display:grid;grid-template-columns:repeat(10,1fr);gap:4px}
+.rate button{border:1px solid var(--line);background:var(--panel2);height:36px;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;padding:0}
+.rate button.on{background:var(--accent);border-color:var(--accent);color:#06210f}
+.rate.inv button.on{background:var(--warn);border-color:var(--warn)}
+.num{display:flex;align-items:center;gap:6px}
+.num input{width:110px;text-align:right;padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);font-weight:600;font-size:16px}
+.num .u{color:var(--muted);font-size:13px;min-width:22px}
+.num .step{width:34px;height:38px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;font-size:17px}
+textarea,input.text{width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);font-size:15px;resize:vertical;min-height:42px}
+input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+.yn{display:flex;gap:6px}
+.yn button{border:1px solid var(--line);background:var(--panel2);padding:8px 16px;border-radius:9px;cursor:pointer;font-weight:600}
+.yn button.on.y{background:var(--warn);color:#2a1800;border-color:var(--warn)}
+.yn button.on.n{background:var(--accent);color:#06210f;border-color:var(--accent)}
+.yn.good button.on.y{background:var(--accent);color:#06210f;border-color:var(--accent)}
+.yn.good button.on.n{background:var(--bad);color:#2b0000;border-color:var(--bad)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chips button{border:1px dashed var(--line);background:none;color:var(--muted);padding:5px 10px;border-radius:999px;font-size:12px;cursor:pointer}
+.ro input,.ro textarea,.ro button.sel-able{pointer-events:none}
+.ro .rate button,.ro .yn button,.ro .step{pointer-events:none}
+.banner{background:#2a2110;border:1px solid #5a4317;color:#ffd28a;padding:10px 14px;border-radius:12px;font-size:13px;margin-bottom:14px}
+.banner.info{background:#10202a;border-color:#1d4258;color:#9fd4ff}
+/* week table */
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.wk{border-collapse:separate;border-spacing:0;width:100%;min-width:720px;font-size:13.5px}
+table.wk th,table.wk td{padding:8px 8px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
+table.wk thead th{position:sticky;top:0;background:var(--panel2);font-size:12px;color:var(--muted);font-weight:600;cursor:pointer}
+table.wk thead th.today{color:var(--accent)}
+table.wk th.m,table.wk td.m{position:sticky;left:0;background:var(--panel);text-align:left;font-weight:600;z-index:1;border-right:1px solid var(--line);white-space:normal;min-width:150px}
+table.wk thead th.m{background:var(--panel2);z-index:2}
+table.wk tr.sec td{background:var(--panel2);color:var(--accent);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;text-align:left}
+table.wk tr.sec td.m{background:var(--panel2)}
+table.wk td.avg{font-weight:800;background:rgba(61,220,132,.07);color:var(--accent)}
+table.wk td.txt{white-space:normal;max-width:140px;font-size:12px;color:#c9d3dd;text-align:left}
+table.wk td.empty{color:#3d4753}
+.measure{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.measure .field{border-right:1px solid var(--line)}
+.measure .field:nth-child(2n){border-right:0}
+.measure .num input{width:90px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--accent);color:#06210f;padding:10px 16px;border-radius:10px;font-weight:700;opacity:0;transition:.2s;pointer-events:none;z-index:50}
+.toast.show{opacity:1}
+/* trends */
+.metricsel{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.metricsel button{border:1px solid var(--line);background:var(--panel);padding:7px 11px;border-radius:999px;font-size:13px;cursor:pointer;font-weight:600;color:var(--muted)}
+.metricsel button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.chart{padding:14px 10px 6px}
+.chart svg{width:100%;height:auto;display:block}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line)}
+.stats div{padding:12px 10px;text-align:center;border-right:1px solid var(--line)}
+.stats div:last-child{border-right:0}
+.stats b{display:block;font-size:18px}
+.stats small{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.hidden{display:none!important}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:40;padding:16px}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:520px;width:100%;padding:16px}
+.modal textarea{min-height:260px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+.modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+@media (max-width:420px){
+  .rate button{height:34px;font-size:13px}
+  .num input{width:96px}
+  .measure{grid-template-columns:1fr}
+  .measure .field{border-right:0}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1><span>Biotracker</span></h1>
+    <div class="status"><span class="dot" id="sdot"></span><span id="stext">Connecting…</span></div>
+  </header>
+  <div id="banner"></div>
+  <nav class="tabs">
+    <button data-tab="log" class="on">Daily log</button>
+    <button data-tab="week">Week view</button>
+    <button data-tab="trends">Trends</button>
+  </nav>
+  <section id="v-log"></section>
+  <section id="v-week" class="hidden"></section>
+  <section id="v-trends" class="hidden"></section>
+</div>
+<div class="toast" id="toast"></div>
+<div id="modalRoot"></div>
+
+<script>
+// ---------- metric definitions (same as the coach's spreadsheet) ----------
+const SECTIONS = [
+  {title:"Bio feedback", fields:[
+    {k:"energy",  l:"Energy levels", t:"rate"},
+    {k:"mood",    l:"Mood", t:"rate"},
+    {k:"stress",  l:"Stress", t:"rate", inv:true},
+    {k:"illness", l:"Signs of illness", t:"rate", inv:true},
+    {k:"doms",    l:"Muscle soreness (DOMS)", t:"rate", inv:true},
+    {k:"rhr",     l:"Resting heart rate", t:"num", u:"bpm", step:1, dp:0},
+  ]},
+  {title:"Sleep", fields:[
+    {k:"sleepHours", l:"Number of hours", t:"num", u:"hrs", step:0.5, dp:1},
+    {k:"sleepSelf",  l:"Quality – self rated", t:"rate"},
+    {k:"sleepDevice",l:"Quality – device rated", t:"rate"},
+  ]},
+  {title:"Nutrition & digestion", fields:[
+    {k:"calories", l:"Calories", t:"num", u:"kcal", step:50, dp:0},
+    {k:"protein",  l:"Protein", t:"num", u:"g", step:5, dp:0},
+    {k:"foodQuality", l:"Food quality", t:"rate"},
+    {k:"water",    l:"Water consumed", t:"num", u:"L", step:0.25, dp:1},
+    {k:"alcohol",  l:"Alcohol consumed?", t:"yn"},
+    {k:"hunger",   l:"Hunger / appetite", t:"rate"},
+    {k:"stool",    l:"Stool movements", t:"text", chips:["Once","Twice","Three times","None"]},
+    {k:"digestive",l:"Digestive stress", hint:"Bloating / gas / indigestion / heartburn", t:"text", chips:["None"]},
+    {k:"supplements", l:"Supplements taken", t:"text", long:true, carry:true},
+  ]},
+  {title:"Training", fields:[
+    {k:"session",  l:"Session performed", t:"text", chips:["Rest day","Upper","Lower","Push","Pull","Legs","Full body"]},
+    {k:"performance", l:"Strength / performance", t:"rate"},
+    {k:"steps",    l:"Steps (NEAT)", t:"num", u:"", step:500, dp:0},
+    {k:"cardio",   l:"Cardio performed", t:"text", chips:["None"]},
+  ]},
+  {title:"Physical metrics", fields:[
+    {k:"weight",   l:"Bodyweight on wake", t:"num", u:"kg", step:0.1, dp:1},
+  ]},
+];
+const ALL = SECTIONS.flatMap(s=>s.fields);
+const DAILY_COUNT = ALL.length;
+const MEASURES = [
+  {k:"umbilical",l:"Umbilical"},{k:"chest",l:"Chest"},
+  {k:"bicepL",l:"Bicep L"},{k:"bicepR",l:"Bicep R"},
+  {k:"thighL",l:"Thigh L"},{k:"thighR",l:"Thigh R"},
+  {k:"glutes",l:"Glutes"},
+];
+const TREND_KEYS = ["weight","energy","mood","stress","sleepHours","sleepSelf","sleepDevice","calories","protein","steps","rhr","doms","water","hunger","performance","foodQuality"];
+
+// ---------- date helpers ----------
+const pad=n=>String(n).padStart(2,"0");
+const iso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const parse=s=>{const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+const addDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return iso(d)};
+const monday=s=>{const d=parse(s);const w=(d.getDay()+6)%7;d.setDate(d.getDate()-w);return iso(d)};
+const today=()=>iso(new Date());
+const DOW=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const fmtLong=s=>parse(s).toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
+const fmtShort=s=>parse(s).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+const fmtUK=s=>{const d=parse(s);return pad(d.getDate())+"/"+pad(d.getMonth()+1)+"/"+d.getFullYear()};
+
+// ---------- state ----------
+const S = {
+  tab:"log", date:today(), week:monday(today()), trend:"weight", range:30,
+  entries:{}, weeks:{}, db:null, canWrite:true, local:false,
+  pending:{}, saving:{}, timers:{},
+};
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function setStatus(kind,text){$("#sdot").className="dot "+kind;$("#stext").textContent=text}
+function toast(t){const el=$("#toast");el.textContent=t;el.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove("show"),1600)}
+
+// ---------- persistence ----------
+const LS="biotracker-local-v1";
+function loadLocal(){try{const j=JSON.parse(localStorage.getItem(LS)||"{}");S.entries=j.entries||{};S.weeks=j.weeks||{}}catch(e){}}
+function saveLocal(){try{localStorage.setItem(LS,JSON.stringify({entries:S.entries,weeks:S.weeks}))}catch(e){}}
+
+function queueWrite(coll,id){
+  const key=coll+"/"+id;
+  S.pending[key]=true;
+  setStatus("busy","Saving…");
+  clearTimeout(S.timers[key]);
+  S.timers[key]=setTimeout(()=>flush(coll,id),600);
+}
+async function flush(coll,id){
+  const key=coll+"/"+id;
+  if(S.saving[key]){S.timers[key]=setTimeout(()=>flush(coll,id),300);return}
+  if(!S.pending[key])return;
+  S.pending[key]=false;
+  const src=coll==="entries"?S.entries:S.weeks;
+  const body=Object.assign({},src[id]||{});
+  if(S.local||!S.db){saveLocal();doneSaving();return}
+  S.saving[key]=true;
+  try{
+    body.updatedAt=new Date().toISOString();
+    await S.db.doc(key).set(body);
+  }catch(e){
+    if(e&&e.code==="unavailable"){S.pending[key]=true;setTimeout(()=>flush(coll,id),800+Math.random()*800)}
+    else if(e&&e.code==="invalid_argument"){S.canWrite=false;render();setStatus("err","Read-only");S.saving[key]=false;return}
+    else{setStatus("err","Save failed");S.saving[key]=false;return}
+  }
+  S.saving[key]=false;
+  doneSaving();
+}
+function doneSaving(){
+  if(Object.values(S.pending).some(Boolean)||Object.values(S.saving).some(Boolean))return;
+  setStatus("ok",S.local?"Saved on this device":"All changes saved");
+}
+
+function setVal(date,k,v){
+  if(!S.canWrite)return;
+  const e=Object.assign({},S.entries[date]||{});
+  if(v===""||v===null||v===undefined||(typeof v==="number"&&isNaN(v)))delete e[k];else e[k]=v;
+  e.date=date;
+  S.entries[date]=e;
+  queueWrite("entries",date);
+}
+function setWeekVal(wk,k,v){
+  if(!S.canWrite)return;
+  const w=Object.assign({},S.weeks[wk]||{});
+  if(v===""||v===null||v===undefined||(typeof v==="number"&&isNaN(v)))delete w[k];else w[k]=v;
+  w.week=wk;
+  S.weeks[wk]=w;
+  queueWrite("weeks",wk);
+}
+
+// ---------- rendering: LOG ----------
+function filledCount(e){if(!e)return 0;return ALL.filter(f=>e[f.k]!==undefined&&e[f.k]!=="").length}
+
+function renderLog(){
+  const d=S.date, e=S.entries[d]||{}, wk=monday(d);
+  const isToday=d===today();
+  let h=`<div class="bar">
+    <button class="iconbtn" data-act="prevDay" aria-label="Previous day">‹</button>
+    <div class="lbl">${isToday?"Today":esc(fmtLong(d))}<small>${isToday?esc(fmtLong(d))+" · ":""}Day ${((parse(d).getDay()+6)%7)+1} of week ${esc(fmtUK(wk))}</small></div>
+    <button class="iconbtn" data-act="nextDay" aria-label="Next day">›</button>
+  </div>
+  <div class="daystrip">`;
+  for(let i=0;i<7;i++){
+    const dd=addDays(wk,i), n=filledCount(S.entries[dd]);
+    h+=`<button data-act="pickDay" data-d="${dd}" class="${dd===d?"sel":""}"><small>${DOW[i]}${dd===today()?" •":""}</small><b>${parse(dd).getDate()}</b><span class="pct"><i style="width:${Math.round(n/DAILY_COUNT*100)}%"></i></span></button>`;
+  }
+  h+=`</div>`;
+  if(!isToday)h+=`<div class="actions"><button class="pill" data-act="goToday">Jump to today</button></div>`;
+  h+=`<div class="${S.canWrite?"":"ro"}">`;
+  for(const sec of SECTIONS){
+    const n=sec.fields.filter(f=>e[f.k]!==undefined&&e[f.k]!=="").length;
+    h+=`<div class="card"><h2>${esc(sec.title)}<em>${n}/${sec.fields.length}</em></h2>`;
+    for(const f of sec.fields)h+=fieldHTML(f,e[f.k],d);
+    h+=`</div>`;
+  }
+  // weekly block
+  const w=S.weeks[wk]||{};
+  h+=`<div class="card"><h2>Weekly check-in<em>week of ${esc(fmtShort(wk))}</em></h2>
+    <div class="field inline"><div class="name">Log book progressed this week?</div>
+      <div class="yn good" data-wk="${wk}" data-k="logbook">
+        <button class="y ${w.logbook==="Yes"?"on":""}" data-v="Yes">Yes</button>
+        <button class="n ${w.logbook==="No"?"on":""}" data-v="No">No</button></div></div>
+    <div class="field"><div class="name">Circumference measurements <small>cm</small></div></div>
+    <div class="measure">${MEASURES.map(m=>`<div class="field inline"><div class="name">${m.l}</div>
+      <div class="num"><input type="number" inputmode="decimal" step="0.1" data-wk="${wk}" data-k="${m.k}" value="${w[m.k]??""}" placeholder="–"></div></div>`).join("")}</div>
+    <div class="field"><div class="name">Notes for coach</div>
+      <textarea data-wk="${wk}" data-k="notes" rows="2" placeholder="Anything your coach should know this week">${esc(w.notes||"")}</textarea></div>
+  </div></div>`;
+  $("#v-log").innerHTML=h;
+}
+
+function fieldHTML(f,v,d){
+  const name=`<div class="name">${esc(f.l)}${f.t==="rate"?` <small>${f.inv?"1 = low · 10 = high":"1–10"}</small>`:""}${f.hint?` <small>${esc(f.hint)}</small>`:""}</div>`;
+  if(f.t==="rate"){
+    let b="";for(let i=1;i<=10;i++)b+=`<button class="${v===i?"on":""}" data-v="${i}">${i}</button>`;
+    return `<div class="field">${name}<div class="rate ${f.inv?"inv":""}" data-k="${f.k}">${b}</div></div>`;
+  }
+  if(f.t==="num"){
+    return `<div class="field inline">${name}<div class="num">
+      <button class="step" data-k="${f.k}" data-dir="-1" aria-label="decrease">−</button>
+      <input type="number" inputmode="decimal" step="${f.step}" data-k="${f.k}" value="${v??""}" placeholder="–">
+      <button class="step" data-k="${f.k}" data-dir="1" aria-label="increase">+</button>
+      <span class="u">${esc(f.u)}</span></div></div>`;
+  }
+  if(f.t==="yn"){
+    return `<div class="field inline">${name}<div class="yn" data-k="${f.k}">
+      <button class="y ${v==="Yes"?"on":""}" data-v="Yes">Yes</button>
+      <button class="n ${v==="No"?"on":""}" data-v="No">No</button></div></div>`;
+  }
+  // text
+  let chips=(f.chips||[]).map(c=>`<button data-chip="${esc(c)}" data-k="${f.k}">${esc(c)}</button>`).join("");
+  if(f.carry){
+    const prev=findPrev(d,f.k);
+    if(prev&&!v)chips+=`<button data-chip="${esc(prev)}" data-k="${f.k}">↺ Same as last time</button>`;
+  }
+  const input=f.long?`<textarea data-k="${f.k}" rows="2" placeholder="–">${esc(v||"")}</textarea>`
+                    :`<input class="text" type="text" data-k="${f.k}" value="${esc(v||"")}" placeholder="–">`;
+  return `<div class="field">${name}${input}${chips&&S.canWrite?`<div class="chips">${chips}</div>`:""}</div>`;
+}
+function findPrev(d,k){
+  const ds=Object.keys(S.entries).filter(x=>x<d).sort().reverse();
+  for(const x of ds){const v=S.entries[x][k];if(v)return v}
+  return null;
+}
+
+// ---------- rendering: WEEK ----------
+const numVals=(arr,k)=>arr.map(e=>e&&e[k]).filter(v=>typeof v==="number");
+const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+function fmtNum(v,f){if(v==null)return"";const dp=f&&f.dp!=null?f.dp:(f&&f.t==="rate"?1:1);return Number(v).toLocaleString("en-GB",{minimumFractionDigits:0,maximumFractionDigits:dp})}
+
+function renderWeek(){
+  const wk=S.week, days=[...Array(7)].map((_,i)=>addDays(wk,i)), es=days.map(d=>S.entries[d]);
+  let h=`<div class="bar">
+    <button class="iconbtn" data-act="prevWeek" aria-label="Previous week">‹</button>
+    <div class="lbl">Week of ${esc(fmtUK(wk))}<small>${esc(fmtShort(days[0]))} – ${esc(fmtShort(days[6]))}</small></div>
+    <button class="iconbtn" data-act="nextWeek" aria-label="Next week">›</button></div>
+    <div class="actions"><button class="pill accent" data-act="summary">Copy summary for coach</button>
+    ${monday(today())!==wk?`<button class="pill" data-act="thisWeek">This week</button>`:""}</div>
+    <div class="card"><div class="tablewrap"><table class="wk"><thead><tr><th class="m">Metric</th>`;
+  days.forEach((d,i)=>h+=`<th data-act="openDay" data-d="${d}" class="${d===today()?"today":""}">${DOW[i]}<br>${parse(d).getDate()}</th>`);
+  h+=`<th>Avg</th></tr></thead><tbody>`;
+  for(const sec of SECTIONS){
+    h+=`<tr class="sec"><td class="m">${esc(sec.title)}</td><td colspan="8"></td></tr>`;
+    for(const f of sec.fields){
+      h+=`<tr><td class="m">${esc(f.l)}${f.u?` <span style="color:var(--muted);font-weight:500">(${esc(f.u)})</span>`:""}</td>`;
+      es.forEach(e=>{
+        const v=e?e[f.k]:undefined;
+        if(v===undefined||v==="")h+=`<td class="empty">·</td>`;
+        else if(f.t==="text")h+=`<td class="txt">${esc(v)}</td>`;
+        else if(f.t==="yn")h+=`<td style="color:${v==="Yes"?"var(--warn)":"inherit"}">${esc(v)}</td>`;
+        else h+=`<td>${fmtNum(v,f)}</td>`;
+      });
+      let a="";
+      if(f.t==="num"||f.t==="rate"){const m=avg(numVals(es,f.k));a=m==null?"":fmtNum(m,{dp:f.k==="calories"||f.k==="steps"||f.k==="protein"?0:1})}
+      else if(f.t==="yn"){const y=es.filter(e=>e&&e[f.k]==="Yes").length,n=es.filter(e=>e&&e[f.k]).length;a=n?`${y}/${n} yes`:""}
+      else {const n=es.filter(e=>e&&e[f.k]).length;a=n?`${n} logged`:""}
+      h+=`<td class="avg">${a}</td></tr>`;
+    }
+  }
+  const w=S.weeks[wk]||{};
+  h+=`<tr class="sec"><td class="m">Weekly</td><td colspan="8"></td></tr>
+      <tr><td class="m">Log book progressed?</td><td colspan="8" style="text-align:left">${esc(w.logbook||"–")}</td></tr>`;
+  for(const m of MEASURES)h+=`<tr><td class="m">${m.l} (cm)</td><td colspan="8" style="text-align:left">${w[m.k]??"–"}</td></tr>`;
+  if(w.notes)h+=`<tr><td class="m">Notes</td><td colspan="8" class="txt" style="max-width:none">${esc(w.notes)}</td></tr>`;
+  h+=`</tbody></table></div></div>`;
+  $("#v-week").innerHTML=h;
+}
+
+function weekSummary(wk){
+  const days=[...Array(7)].map((_,i)=>addDays(wk,i)), es=days.map(d=>S.entries[d]);
+  const L=[`Biotracker – week of ${fmtUK(wk)}`,""];
+  for(const sec of SECTIONS){
+    L.push(sec.title.toUpperCase());
+    for(const f of sec.fields){
+      const vals=es.map(e=>e&&e[f.k]!==undefined&&e[f.k]!==""?(f.t==="num"||f.t==="rate"?fmtNum(e[f.k],f):e[f.k]):"–");
+      let a="";
+      if(f.t==="num"||f.t==="rate"){const m=avg(numVals(es,f.k));if(m!=null)a=`  (avg ${fmtNum(m,{dp:1})})`}
+      L.push(`${f.l}${f.u?" ("+f.u+")":""}: ${vals.join(" | ")}${a}`);
+    }
+    L.push("");
+  }
+  const w=S.weeks[wk]||{};
+  L.push("WEEKLY");
+  L.push(`Log book progressed: ${w.logbook||"–"}`);
+  L.push("Measurements (cm): "+MEASURES.map(m=>`${m.l} ${w[m.k]??"–"}`).join(", "));
+  if(w.notes)L.push(`Notes: ${w.notes}`);
+  return L.join("\n");
+}
+function showSummary(){
+  const txt=weekSummary(S.week);
+  $("#modalRoot").innerHTML=`<div class="overlay" data-act="closeModal"><div class="modal">
+    <div style="font-weight:700;margin-bottom:8px">Week summary</div>
+    <textarea id="sumtxt" readonly>${esc(txt)}</textarea>
+    <div class="row"><button class="pill" data-act="closeModal">Close</button><button class="pill accent" data-act="copySum">Copy</button></div></div></div>`;
+}
+
+// ---------- rendering: TRENDS ----------
+function renderTrends(){
+  const f=ALL.find(x=>x.k===S.trend);
+  const end=today(), start=addDays(end,-(S.range-1));
+  const pts=Object.keys(S.entries).filter(d=>d>=start&&d<=end&&typeof S.entries[d][f.k]==="number").sort().map(d=>({d,v:S.entries[d][f.k]}));
+  let h=`<div class="metricsel">${TREND_KEYS.map(k=>{const ff=ALL.find(x=>x.k===k);return`<button data-act="trend" data-k="${k}" class="${k===S.trend?"on":""}">${esc(ff.l.replace(/ \(.*\)/,""))}</button>`}).join("")}</div>
+    <div class="actions">${[7,30,90,365].map(r=>`<button class="pill ${r===S.range?"accent":""}" data-act="range" data-r="${r}">${r===365?"1 year":r+" days"}</button>`).join("")}</div>
+    <div class="card"><h2>${esc(f.l)}${f.u?` (${esc(f.u)})`:""}<em>${pts.length} entries</em></h2>`;
+  if(pts.length<1){h+=`<div class="field" style="color:var(--muted)">No data in this range yet.</div></div>`;$("#v-trends").innerHTML=h;return}
+  const W=640,H=240,P={l:44,r:14,t:14,b:28};
+  const t0=parse(start).getTime(), t1=parse(end).getTime(), span=Math.max(1,t1-t0);
+  let mn=Math.min(...pts.map(p=>p.v)), mx=Math.max(...pts.map(p=>p.v));
+  if(f.t==="rate"){mn=0;mx=10}else{const pad=(mx-mn)*0.15||Math.abs(mx)*0.02||1;mn-=pad;mx+=pad}
+  const X=d=>P.l+(parse(d).getTime()-t0)/span*(W-P.l-P.r);
+  const Y=v=>P.t+(1-(v-mn)/(mx-mn))*(H-P.t-P.b);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(f.l)} over time">`;
+  for(let i=0;i<=4;i++){const v=mn+(mx-mn)*i/4,y=Y(v);svg+=`<line x1="${P.l}" x2="${W-P.r}" y1="${y}" y2="${y}" stroke="#2a333e"/><text x="${P.l-6}" y="${y+4}" fill="#8b97a5" font-size="11" text-anchor="end">${fmtNum(v,{dp:f.k==="weight"?1:0})}</text>`}
+  const ticks=Math.min(6,S.range);
+  for(let i=0;i<ticks;i++){const d=addDays(start,Math.round(i*(S.range-1)/Math.max(1,ticks-1)));svg+=`<text x="${X(d)}" y="${H-8}" fill="#8b97a5" font-size="11" text-anchor="middle">${esc(fmtShort(d))}</text>`}
+  // 7-day rolling avg
+  if(pts.length>2){
+    const ra=pts.map(p=>{const w=pts.filter(q=>q.d<=p.d&&q.d>addDays(p.d,-7));return{d:p.d,v:avg(w.map(q=>q.v))}});
+    svg+=`<polyline fill="none" stroke="#4c8dff" stroke-width="2" stroke-dasharray="4 4" opacity=".8" points="${ra.map(p=>X(p.d)+","+Y(p.v)).join(" ")}"/>`;
+  }
+  svg+=`<polyline fill="none" stroke="#3ddc84" stroke-width="2.5" stroke-linejoin="round" points="${pts.map(p=>X(p.d)+","+Y(p.v)).join(" ")}"/>`;
+  pts.forEach(p=>svg+=`<circle cx="${X(p.d)}" cy="${Y(p.v)}" r="${pts.length>60?2:3.5}" fill="#3ddc84"><title>${esc(fmtShort(p.d))}: ${fmtNum(p.v,f)}</title></circle>`);
+  svg+=`</svg>`;
+  const vals=pts.map(p=>p.v), first=vals[0], last=vals[vals.length-1];
+  const ch=last-first;
+  h+=`<div class="chart">${svg}<div style="font-size:12px;color:var(--muted);padding:6px 6px 0"><span style="color:#3ddc84">━</span> daily &nbsp; <span style="color:#4c8dff">┅</span> 7-day average</div></div>
+    <div class="stats"><div><b>${fmtNum(last,f)}</b><small>Latest</small></div><div><b>${fmtNum(avg(vals),{dp:1})}</b><small>Average</small></div>
+    <div><b>${fmtNum(Math.min(...vals),f)}–${fmtNum(Math.max(...vals),f)}</b><small>Range</small></div>
+    <div><b style="color:${ch===0?"inherit":(ch>0?"var(--accent)":"var(--warn)")}">${ch>0?"+":""}${fmtNum(ch,{dp:1})}</b><small>Change</small></div></div></div>`;
+  $("#v-trends").innerHTML=h;
+}
+
+function render(){
+  ["log","week","trends"].forEach(t=>$("#v-"+t).classList.toggle("hidden",S.tab!==t));
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===S.tab));
+  if(S.tab==="log")renderLog();else if(S.tab==="week")renderWeek();else renderTrends();
+  let b="";
+  if(!S.canWrite)b=`<div class="banner info">View-only: you can see every entry, but only the owner can edit.</div>`;
+  else if(S.local)b=`<div class="banner">Not connected to cloud storage — entries are saved on this device only and your coach won't see them.</div>`;
+  $("#banner").innerHTML=b;
+}
+
+// ---------- events ----------
+document.addEventListener("click",ev=>{
+  const t=ev.target.closest("button,[data-act]");if(!t)return;
+  if(t.dataset.tab){S.tab=t.dataset.tab;if(S.tab==="week")S.week=monday(S.date);render();window.scrollTo(0,0);return}
+  const a=t.dataset.act;
+  if(a){
+    if(a==="prevDay"){S.date=addDays(S.date,-1)}
+    else if(a==="nextDay"){S.date=addDays(S.date,1)}
+    else if(a==="pickDay"){S.date=t.dataset.d}
+    else if(a==="goToday"){S.date=today()}
+    else if(a==="prevWeek"){S.week=addDays(S.week,-7)}
+    else if(a==="nextWeek"){S.week=addDays(S.week,7)}
+    else if(a==="thisWeek"){S.week=monday(today())}
+    else if(a==="openDay"){S.date=t.dataset.d;S.tab="log"}
+    else if(a==="trend"){S.trend=t.dataset.k}
+    else if(a==="range"){S.range=+t.dataset.r}
+    else if(a==="summary"){showSummary();return}
+    else if(a==="closeModal"){if(t.tagName==="BUTTON"||ev.target===t)$("#modalRoot").innerHTML="";return}
+    else if(a==="copySum"){const ta=$("#sumtxt");ta.select();
+      (navigator.clipboard?navigator.clipboard.writeText(ta.value):Promise.reject()).then(()=>toast("Copied")).catch(()=>{try{document.execCommand("copy");toast("Copied")}catch(e){toast("Select & copy manually")}});return}
+    render();return;
+  }
+  if(!S.canWrite)return;
+  const d=S.date;
+  // rating
+  const rate=t.parentElement&&t.parentElement.classList.contains("rate")?t.parentElement:null;
+  if(rate){const k=rate.dataset.k,v=+t.dataset.v;const cur=(S.entries[d]||{})[k];setVal(d,k,cur===v?null:v);
+    rate.querySelectorAll("button").forEach(b=>b.classList.toggle("on",+b.dataset.v===(cur===v?-1:v)));updateCounts();return}
+  // yes/no
+  const yn=t.parentElement&&t.parentElement.classList.contains("yn")?t.parentElement:null;
+  if(yn){const k=yn.dataset.k,v=t.dataset.v;
+    if(yn.dataset.wk){const cur=(S.weeks[yn.dataset.wk]||{})[k];setWeekVal(yn.dataset.wk,k,cur===v?null:v);
+      yn.querySelectorAll("button").forEach(b=>b.classList.toggle("on",cur!==v&&b.dataset.v===v));}
+    else{const cur=(S.entries[d]||{})[k];setVal(d,k,cur===v?null:v);
+      yn.querySelectorAll("button").forEach(b=>b.classList.toggle("on",cur!==v&&b.dataset.v===v));updateCounts();}
+    return}
+  // stepper
+  if(t.classList.contains("step")){
+    const f=ALL.find(x=>x.k===t.dataset.k);const inp=t.parentElement.querySelector("input");
+    let cur=parseFloat(inp.value);
+    if(isNaN(cur)){const p=findPrevNum(d,f.k);cur=p!=null?p:0;if(p!=null){inp.value=fmtRaw(cur,f);setVal(d,f.k,cur);updateCounts();return}}
+    cur=Math.max(0,+(cur+f.step*(+t.dataset.dir)).toFixed(2));
+    inp.value=fmtRaw(cur,f);setVal(d,f.k,cur);updateCounts();return}
+  // chips
+  if(t.dataset.chip!==undefined){const k=t.dataset.k;const box=t.closest(".field").querySelector("input,textarea");box.value=t.dataset.chip;setVal(d,k,t.dataset.chip);updateCounts();return}
+});
+function fmtRaw(v,f){return f.dp===0?String(Math.round(v)):String(+v.toFixed(2))}
+function findPrevNum(d,k){const ds=Object.keys(S.entries).filter(x=>x<d).sort().reverse();for(const x of ds){const v=S.entries[x][k];if(typeof v==="number")return v}return null}
+
+document.addEventListener("input",ev=>{
+  const t=ev.target;if(!S.canWrite||!t.dataset.k)return;
+  if(t.dataset.wk){const v=t.type==="number"?(t.value===""?null:parseFloat(t.value)):t.value.trim();setWeekVal(t.dataset.wk,t.dataset.k,v);return}
+  const f=ALL.find(x=>x.k===t.dataset.k);if(!f)return;
+  const v=f.t==="num"?(t.value===""?null:parseFloat(t.value)):t.value.trim();
+  setVal(S.date,f.k,v);updateCounts();
+});
+function updateCounts(){
+  // refresh section counters + day strip without rebuilding inputs
+  const e=S.entries[S.date]||{};
+  document.querySelectorAll("#v-log .card h2 em").forEach((em,i)=>{const sec=SECTIONS[i];if(sec)em.textContent=sec.fields.filter(f=>e[f.k]!==undefined&&e[f.k]!=="").length+"/"+sec.fields.length});
+  document.querySelectorAll("#v-log .daystrip button").forEach(b=>{const n=filledCount(S.entries[b.dataset.d]);b.querySelector(".pct i").style.width=Math.round(n/DAILY_COUNT*100)+"%"});
+}
+
+// ---------- remote data ----------
+function applySnap(coll,snap){
+  const target=coll==="entries"?S.entries:S.weeks;
+  const next={};
+  snap.docs.forEach(doc=>{const id=doc.id;const key=coll+"/"+id;
+    // keep local unsaved edits
+    next[id]=(S.pending[key]||S.saving[key])?target[id]:Object.assign({},doc.data())});
+  for(const id in target){const key=coll+"/"+id;if((S.pending[key]||S.saving[key])&&!next[id])next[id]=target[id]}
+  if(coll==="entries")S.entries=next;else S.weeks=next;
+}
+let firstLoad={entries:false,weeks:false};
+function safeRerender(){
+  // avoid stomping on an input being typed into
+  const a=document.activeElement;
+  if(a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA")&&S.tab==="log"){updateCounts();return}
+  render();
+}
+async function init(){
+  render();
+  if(!window.claude||!window.claude.use){goLocal();return}
+  let db=null,user=null;
+  try{[db,user]=await Promise.all([claude.use("db"),claude.use("user").catch(()=>null)])}catch(e){}
+  if(!db){goLocal();return}
+  S.db=db;
+  if(user&&user.can){try{const c=await user.can("data.write");if(c===false)S.canWrite=false}catch(e){}}
+  setStatus("busy","Loading…");
+  const timer=setTimeout(()=>{if(!firstLoad.entries)setStatus("err","Can't reach data yet")},10000);
+  db.collection("entries").onSnapshot(s=>{applySnap("entries",s);if(!s.metadata.fromCache){firstLoad.entries=true;clearTimeout(timer);doneSaving()}safeRerender()},
+    e=>{clearTimeout(timer);setStatus("err","Sync stopped – reload")});
+  db.collection("weeks").onSnapshot(s=>{applySnap("weeks",s);safeRerender()},()=>{});
+}
+function goLocal(){S.local=true;loadLocal();setStatus("ok","Saved on this device");render()}
+init();
+</script>
+</body>
+</html>
